@@ -39,6 +39,8 @@
 // C++ lib
 //
 #include    <sstream>
+#include    <mutex>
+#include    <atomic>
 
 
 // C lib
@@ -338,6 +340,8 @@ extern "C" {
  * internal function.
  */
 static struct tld_file * g_tld_file = nullptr;
+static std::atomic_bool g_tld_file_initialized(false);
+static std::recursive_mutex g_tld_file_mutex;
 
 
 
@@ -357,9 +361,13 @@ static struct tld_file * g_tld_file = nullptr;
  */
 static enum tld_result tld_load_tlds_if_not_loaded()
 {
-    if(g_tld_file == nullptr)
+    if(!g_tld_file_initialized)
     {
-        return tld_load_tlds(nullptr, 1);
+        std::lock_guard lock(g_tld_file_mutex);
+        if(!g_tld_file_initialized)
+        {
+            return tld_load_tlds(nullptr, 1);
+        }
     }
 
     return TLD_RESULT_SUCCESS;
@@ -621,7 +629,10 @@ enum tld_result tld_load_tlds(const char *filename, int fallback)
 {
     enum tld_file_error err;
 
+    std::lock_guard lock(g_tld_file_mutex);
+    
     tld_file_free(&g_tld_file);
+    g_tld_file_initialized = false;
 
     if(filename == NULL)
     {
@@ -630,6 +641,7 @@ enum tld_result tld_load_tlds(const char *filename, int fallback)
         err = tld_file_load("/var/lib/libtld/tlds.tld", &g_tld_file);
         if(err == TLD_FILE_ERROR_NONE)
         {
+            g_tld_file_initialized = true;
             return TLD_RESULT_SUCCESS;
         }
         // else -- ignore any other error
@@ -643,6 +655,7 @@ enum tld_result tld_load_tlds(const char *filename, int fallback)
     err = tld_file_load(filename, &g_tld_file);
     if(err == TLD_FILE_ERROR_NONE)
     {
+        g_tld_file_initialized = true;
         return TLD_RESULT_SUCCESS;
     }
 
@@ -655,6 +668,7 @@ enum tld_result tld_load_tlds(const char *filename, int fallback)
         err = tld_file_load_stream(&g_tld_file, in);
         if(err == TLD_FILE_ERROR_NONE)
         {
+            g_tld_file_initialized = true;
             return TLD_RESULT_SUCCESS;
         }
     }
@@ -680,7 +694,9 @@ enum tld_result tld_load_tlds(const char *filename, int fallback)
  */
 void tld_free_tlds()
 {
+    std::lock_guard lock(g_tld_file_mutex);
     tld_file_free(&g_tld_file);
+    g_tld_file_initialized = false;
 }
 
 

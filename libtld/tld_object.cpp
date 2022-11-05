@@ -30,6 +30,7 @@
 
 #include "libtld/tld.h"
 #include <stdio.h>
+#include <cassert>
 
 /** \class tld_object
  * \brief Class used to ease the use o the tld() function in C++.
@@ -345,11 +346,8 @@ std::string tld_object::country() const
 {
     // std::string doesn't like NULL as a parameter
     //
-    if(f_info.f_country == nullptr)
-    {
-        return std::string();
-    }
-    return f_info.f_country;
+  assert(f_info.f_country != nullptr);
+  return f_info.f_country;
 }
 
 

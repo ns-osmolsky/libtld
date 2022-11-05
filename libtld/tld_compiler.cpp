@@ -742,7 +742,6 @@ bool tld_definition::add_segment(
                          " However, the whole segment may be \"*\".";
                 return false;
             }
-            [[fallthrough]];
         case '-':
         case '0':
         case '1':
@@ -1974,7 +1973,7 @@ void tld_compiler::ungetc(char32_t c)
         return;
     }
 
-    if(f_ungetc_pos >= std::size(f_ungetc))
+    if(f_ungetc_pos >= sizeof(f_ungetc) / sizeof(f_ungetc[0]))
     {
         throw std::logic_error("f_ungetc buffer is full");
     }
@@ -2474,16 +2473,16 @@ void tld_compiler::output_tlds(std::ostream & out)
 {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpedantic"
-    tld_header header =
+  tld_header header;
     {
-        .f_version_major = 1,
-        .f_version_minor = 0,
-        .f_pad0 = 0,
-        .f_tld_max_level = f_tld_max_level,
-        .f_tld_start_offset = USHRT_MAX,
-        .f_tld_end_offset = USHRT_MAX,
-        .f_created_on = f_created_on,
-    };
+      header.f_version_major = 1;
+      header.f_version_minor = 0;
+      header.f_pad0 = 0;
+      header.f_tld_max_level = f_tld_max_level;
+      header.f_tld_start_offset = USHRT_MAX;
+      header.f_tld_end_offset = USHRT_MAX;
+      header.f_created_on = f_created_on;
+    }
 #pragma GCC diagnostic pop
 
     // define the "offsets" (indices) of all the items
@@ -2523,23 +2522,23 @@ void tld_compiler::output_tlds(std::ostream & out)
             {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpedantic"
-                tld_description description =
+	      tld_description description;
                 {
                     // make sure it's set to exception if we have an "apply to"
                     // (probably not required since we can check whether we do
                     // have an apply to)
                     //
-                    .f_status = static_cast<uint8_t>(d.second->get_apply_to().empty()
-                                    ? d.second->get_status()
-                                    : TLD_STATUS_EXCEPTION),
-                    .f_exception_level = level,
-                    .f_exception_apply_to = find_definition(d.second->get_apply_to()),
-                    .f_start_offset = d.second->get_start_offset(),
-                    .f_end_offset = d.second->get_end_offset(),
-                    .f_tld = static_cast<uint16_t>(d.second->get_segments()[0]),
-                    .f_tags = static_cast<uint16_t>(f_tags.get_tag_offset(d.second->get_tags())),
-                    .f_tags_count = static_cast<uint16_t>(d.second->get_tags().size()),
-                };
+		  description.f_status = static_cast<uint8_t>(d.second->get_apply_to().empty()
+							      ? d.second->get_status()
+							      : TLD_STATUS_EXCEPTION);
+		  description.f_exception_level = level;
+		  description.f_exception_apply_to = find_definition(d.second->get_apply_to());
+		  description.f_start_offset = d.second->get_start_offset();
+		  description.f_end_offset = d.second->get_end_offset();
+		  description.f_tld = static_cast<uint16_t>(d.second->get_segments()[0]);
+		  description.f_tags = static_cast<uint16_t>(f_tags.get_tag_offset(d.second->get_tags()));
+		  description.f_tags_count = static_cast<uint16_t>(d.second->get_tags().size());
+                }
 #pragma GCC diagnostic pop
 
                 std::string const parent_name(d.second->get_parent_inverted_name());
@@ -2635,10 +2634,8 @@ void tld_compiler::output_tlds(std::ostream & out)
     {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpedantic"
-        tld_string_offset offset =
-        {
-            .f_string_offset = static_cast<uint32_t>(f_strings.get_string_offset(idx)),
-        };
+      tld_string_offset offset;
+      offset.f_string_offset = static_cast<uint32_t>(f_strings.get_string_offset(idx));
 #pragma GCC diagnostic pop
         out.write(reinterpret_cast<char const *>(&offset), sizeof(offset));
     }
@@ -2650,10 +2647,8 @@ void tld_compiler::output_tlds(std::ostream & out)
     {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpedantic"
-        tld_string_length length =
-        {
-            .f_string_length = static_cast<uint16_t>(f_strings.get_string(idx).length()),
-        };
+      tld_string_length length;
+      length.f_string_length = static_cast<uint16_t>(f_strings.get_string(idx).length());
 #pragma GCC diagnostic pop
         out.write(reinterpret_cast<char const *>(&length), sizeof(length));
     }
